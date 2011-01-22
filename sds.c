@@ -30,6 +30,13 @@
 
 #define SDS_ABORT_ON_OOM
 
+#ifdef WIN32
+	#include "hiredis_w32.h"
+	#define VA_COPY(X, Y) X = Y
+#else
+	#define VA_COPY(X, Y) va_copy(X,Y)
+#endif
+
 #include "sds.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,7 +162,11 @@ sds sdscpy(sds s, char *t) {
 }
 
 sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
-    va_list cpy;
+	#ifdef WIN32
+		va_list cpy = ap;
+	#else
+		va_list cpy;
+	#endif
     char *buf, *t;
     size_t buflen = 16;
 
@@ -167,7 +178,7 @@ sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
         if (buf == NULL) return NULL;
 #endif
         buf[buflen-2] = '\0';
-        va_copy(cpy,ap);
+        VA_COPY(cpy,ap);
         vsnprintf(buf, buflen, fmt, cpy);
         if (buf[buflen-2] != '\0') {
             free(buf);

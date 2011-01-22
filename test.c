@@ -1,10 +1,15 @@
+#ifdef WIN32
+	#include "hiredis_w32.h"
+#else
+	#include <strings.h>
+	#include <sys/time.h>
+	#include <unistd.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/time.h>
 #include <assert.h>
-#include <unistd.h>
 #include <signal.h>
 #include <errno.h>
 
@@ -35,6 +40,9 @@ static void __connect(redisContext **target) {
 static void test_format_commands() {
     char *cmd;
     int len;
+	const char *argv[3];
+	size_t lens[3] = { 3, 7, 3 };
+    int argc = 3;
 
     test("Format command without interpolation: ");
     len = redisFormatCommand(&cmd,"SET foo bar");
@@ -96,12 +104,9 @@ static void test_format_commands() {
         len == 4+4+(6+2)+4+(3+2));
     free(cmd);
 
-    const char *argv[3];
     argv[0] = "SET";
     argv[1] = "foo\0xxx";
     argv[2] = "bar";
-    size_t lens[3] = { 3, 7, 3 };
-    int argc = 3;
 
     test("Format command by passing argc/argv without lengths: ");
     len = redisFormatCommandArgv(&cmd,argc,argv,NULL);
@@ -120,6 +125,7 @@ static void test_blocking_connection() {
     redisContext *c;
     redisReply *reply;
     int major, minor;
+	struct timeval tv = { 0, 1000 };
 
     test("Returns error when host cannot be resolved: ");
     c = redisConnect((char*)"idontexist.local", 6379);
@@ -251,7 +257,6 @@ static void test_blocking_connection() {
 
     __connect(&c);
     test("Returns I/O error on socket timeout: ");
-    struct timeval tv = { 0, 1000 };
     assert(redisSetTimeout(c,tv) == REDIS_OK);
     test_cond(redisGetReply(c,(void**)&reply) == REDIS_ERR &&
         c->err == REDIS_ERR_IO && errno == EAGAIN);
@@ -297,7 +302,7 @@ static void test_reply_reader() {
     ret = redisReplyReaderGetReply(reader,NULL);
     err = redisReplyReaderGetError(reader);
     test_cond(ret == REDIS_ERR &&
-              strncasecmp(err,"No support for",14) == 0);
+              strcasecmp(err,"No support for") == 0);
     redisReplyReaderFree(reader);
 
     test("Works with NULL functions for reply: ");
@@ -471,7 +476,9 @@ int main(int argc, char **argv) {
             use_unix = 1;
     }
 
+	#ifndef WIN32
     signal(SIGPIPE, SIG_IGN);
+	#endif
     test_format_commands();
     test_blocking_connection();
     test_reply_reader();
