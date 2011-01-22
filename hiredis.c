@@ -545,15 +545,10 @@ int redisReplyReaderGetReply(void *reader, void **reply) {
         if (processItem(r) < 0)
             break;
 
-    /* Discard the consumed part of the buffer. */
-    if (r->pos > 0) {
-        if (r->pos == r->len) {
-            /* sdsrange has a quirck on this edge case. */
-            sdsfree(r->buf);
-            r->buf = sdsempty();
-        } else {
-            r->buf = sdsrange(r->buf,r->pos,r->len);
-        }
+    /* Discard part of the buffer when we've consumed at least 1k, to avoid
+     * doing unnecessary calls to memmove() in sds.c. */
+    if (r->pos >= 1024) {
+        r->buf = sdsrange(r->buf,r->pos,-1);
         r->pos = 0;
         r->len = sdslen(r->buf);
     }
