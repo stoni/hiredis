@@ -1,3 +1,4 @@
+/build
 /hiredis-test
 /hiredis-example*
 /*.o

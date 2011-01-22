@@ -29,8 +29,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef WIN32
+	#include "hiredis_w32.h"
+#else
+	#include <strings.h>
+#endif
+
 #include <string.h>
-#include <strings.h>
 #include <assert.h>
 #include <ctype.h>
 #include "async.h"
@@ -47,8 +52,8 @@ static unsigned int callbackHash(const void *key) {
 }
 
 static void *callbackValDup(void *privdata, const void *src) {
-    ((void) privdata);
     redisCallback *dup = malloc(sizeof(*dup));
+	((void) privdata);
     memcpy(dup,src,sizeof(*dup));
     return dup;
 }

@@ -1,5 +1,5 @@
 #include <sys/types.h>
-#include <ae.h>
+#include "../ae/ae.h"
 #include "../hiredis.h"
 #include "../async.h"
 
@@ -11,16 +11,14 @@ typedef struct redisAeEvents {
 } redisAeEvents;
 
 void redisAeReadEvent(aeEventLoop *el, int fd, void *privdata, int mask) {
-    ((void)el); ((void)fd); ((void)mask);
-
     redisAeEvents *e = (redisAeEvents*)privdata;
+	((void)el); ((void)fd); ((void)mask);
     redisAsyncHandleRead(e->context);
 }
 
 void redisAeWriteEvent(aeEventLoop *el, int fd, void *privdata, int mask) {
-    ((void)el); ((void)fd); ((void)mask);
-
     redisAeEvents *e = (redisAeEvents*)privdata;
+	((void)el); ((void)fd); ((void)mask);
     redisAsyncHandleWrite(e->context);
 }
 

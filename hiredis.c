@@ -29,9 +29,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef WIN32
+	#include "hiredis_w32.h"
+	#define VA_COPY(X, Y) X = Y
+#else
+	#include <unistd.h>
+	#define VA_COPY(X, Y) va_copy(X, Y)
+#endif
+
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <assert.h>
 #include <errno.h>
 #include <ctype.h>
@@ -648,7 +655,11 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
                     char _format[16];
                     const char *_p = c+1;
                     size_t _l = 0;
-                    va_list _cpy;
+					#ifdef WIN32
+						va_list _cpy = ap;
+					#else
+						va_list _cpy;
+					#endif
 
                     /* Flags */
                     if (*_p != '\0' && *_p == '#') _p++;
@@ -681,7 +692,7 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
                         if (_l < sizeof(_format)-2) {
                             memcpy(_format,c,_l);
                             _format[_l] = '\0';
-                            va_copy(_cpy,ap);
+                            VA_COPY(_cpy,ap);
                             current = sdscatvprintf(current,_format,_cpy);
                             interpolated = 1;
                             va_end(_cpy);
@@ -693,7 +704,11 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
                     }
 
                     /* Consume and discard vararg */
-                    va_arg(ap,void);
+                    #ifdef WIN32
+					va_arg(ap,void*);
+					#else
+					va_arg(ap,void);
+					#endif
                 }
             }
             c++;
@@ -716,7 +731,11 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
     if (!cmd) redisOOM();
     pos = sprintf(cmd,"*%d\r\n",argc);
     for (j = 0; j < argc; j++) {
-        pos += sprintf(cmd+pos,"$%zu\r\n",sdslen(argv[j]));
+		#ifdef WIN32
+			pos += sprintf(cmd+pos,"$%lu\r\n",sdslen(argv[j]));
+		#else
+			pos += sprintf(cmd+pos,"$%zu\r\n",sdslen(argv[j]));
+		#endif
         memcpy(cmd+pos,argv[j],sdslen(argv[j]));
         pos += sdslen(argv[j]);
         sdsfree(argv[j]);
@@ -775,7 +794,11 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
     pos = sprintf(cmd,"*%d\r\n",argc);
     for (j = 0; j < argc; j++) {
         len = argvlen ? argvlen[j] : strlen(argv[j]);
-        pos += sprintf(cmd+pos,"$%zu\r\n",len);
+		#ifdef WIN32
+			pos += sprintf(cmd+pos,"$%lu\r\n",len);
+		#else
+			pos += sprintf(cmd+pos,"$%zu\r\n",sdslen(argv[j]));
+		#endif
         memcpy(cmd+pos,argv[j],len);
         pos += len;
         cmd[pos++] = '\r';
@@ -794,7 +817,11 @@ void __redisSetError(redisContext *c, int type, const sds errstr) {
     } else {
         /* Only REDIS_ERR_IO may lack a description! */
         assert(type == REDIS_ERR_IO);
-        c->errstr = sdsnew(strerror(errno));
+		#ifdef WIN32
+			c->errstr = get_last_wsock_err();
+		#else
+			c->errstr = sdsnew(strerror(errno));
+		#endif
     }
 }
 
@@ -810,7 +837,12 @@ static redisContext *redisContextInit() {
 
 void redisFree(redisContext *c) {
     if (c->fd > 0)
-        close(c->fd);
+        #ifdef WIN32
+		closesocket(c->fd);
+		WSACleanup();
+		#else
+		close(c->fd);
+		#endif
     if (c->errstr != NULL)
         sdsfree(c->errstr);
     if (c->obuf != NULL)
@@ -883,7 +915,11 @@ static void __redisCreateReplyReader(redisContext *c) {
  * see if there is a reply available. */
 int redisBufferRead(redisContext *c) {
     char buf[2048];
+    #ifdef WIN32
+	int nread = recv(c->fd,buf,sizeof(buf),0);
+	#else
     int nread = read(c->fd,buf,sizeof(buf));
+	#endif
     if (nread == -1) {
         if (errno == EAGAIN && !(c->flags & REDIS_BLOCK)) {
             /* Try again later */
@@ -914,7 +950,11 @@ int redisBufferRead(redisContext *c) {
 int redisBufferWrite(redisContext *c, int *done) {
     int nwritten;
     if (sdslen(c->obuf) > 0) {
-        nwritten = write(c->fd,c->obuf,sdslen(c->obuf));
+        #ifdef WIN32
+		nwritten = send(c->fd,c->obuf,sdslen(c->obuf), 0);
+		#else
+		nwritten = write(c->fd,c->obuf,sdslen(c->obuf));
+		#endif
         if (nwritten == -1) {
             if (errno == EAGAIN && !(c->flags & REDIS_BLOCK)) {
                 /* Try again later */
