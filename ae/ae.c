@@ -36,7 +36,6 @@
 #ifdef WIN32
 	#include "../hiredis_w32.h"
 #else
-	#include "zmalloc.h"
 	#include <sys/time.h>
 	#include <sys/types.h>
 	#include <unistd.h>
