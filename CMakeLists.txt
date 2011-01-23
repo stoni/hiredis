@@ -12,7 +12,7 @@ if(WIN32)
 	set (LIB_LIST Ws2_32.lib)
 else(WIN32)
 	set (SRC_LIST ${SRC_LIST} net.c)
-	ADD_DEFINITION(-DHAVE_EPOLL)
+	add_definitions(-DHAVE_EPOLL)
 endif(WIN32)
 
 # add library
