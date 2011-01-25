@@ -302,7 +302,7 @@ static void test_reply_reader() {
     ret = redisReplyReaderGetReply(reader,NULL);
     err = redisReplyReaderGetError(reader);
     test_cond(ret == REDIS_ERR &&
-              strcasecmp(err,"No support for") == 0);
+              strncasecmp(err,"No support for",14) == 0);
     redisReplyReaderFree(reader);
 
     test("Works with NULL functions for reply: ");
