@@ -792,7 +792,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
 		#ifdef WIN32
 			pos += sprintf(cmd+pos,"$%lu\r\n",len);
 		#else
-			pos += sprintf(cmd+pos,"$%zu\r\n",sdslen(argv[j]));
+			pos += sprintf(cmd+pos,"$%zu\r\n",len);
 		#endif
         memcpy(cmd+pos,argv[j],len);
         pos += len;
