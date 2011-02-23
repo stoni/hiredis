@@ -1,8 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project (hiredis)
 
-# add the binary tree to the search path for include files
-# so that we will find TutorialConfig.h
 include_directories("${PROJECT_BINARY_DIR}")
 
 set (SRC_LIST async.c dict.c hiredis.c sds.c ae/ae.c)
@@ -16,12 +14,22 @@ else(WIN32)
 endif(WIN32)
 
 # add library
-add_library(libhiredis ${SRC_LIST})
+add_library(hiredis ${SRC_LIST})
 
 # add tests
 add_executable(hiredis-test test.c)
 add_executable(example-ae example-ae.c)
 
 #link executables
-target_link_libraries(hiredis-test libhiredis ${LIB_LIST})
-target_link_libraries(example-ae libhiredis ${LIB_LIST})
+target_link_libraries(hiredis-test hiredis ${LIB_LIST})
+target_link_libraries(example-ae hiredis ${LIB_LIST})
+
+#installation
+install(TARGETS hiredis-test example-ae hiredis
+            RUNTIME DESTINATION bin
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib/static)
+
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY src/adapters DESTINATION include/adapters FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY src/ae DESTINATION include/ae FILES_MATCHING PATTERN "*.h")
