@@ -37,7 +37,7 @@ static void __connect(redisContext **target) {
     }
 }
 
-static void test_format_commands() {
+static void test_format_commands(void) {
     char *cmd;
     int len;
 	const char *argv[3];
@@ -121,7 +121,7 @@ static void test_format_commands() {
     free(cmd);
 }
 
-static void test_blocking_connection() {
+static void test_blocking_connection(void) {
     redisContext *c;
     redisReply *reply;
     int major, minor;
@@ -266,7 +266,7 @@ static void test_blocking_connection() {
     __connect(&c);
 }
 
-static void test_reply_reader() {
+static void test_reply_reader(void) {
     void *reader;
     void *reply;
     char *err;
@@ -323,9 +323,18 @@ static void test_reply_reader() {
     ret = redisReplyReaderGetReply(reader,&reply);
     test_cond(ret == REDIS_OK && reply == (void*)REDIS_REPLY_STATUS);
     redisReplyReaderFree(reader);
+
+    test("Properly reset state after protocol error: ");
+    reader = redisReplyReaderCreate();
+    redisReplyReaderSetReplyObjectFunctions(reader,NULL);
+    redisReplyReaderFeed(reader,(char*)"x",1);
+    ret = redisReplyReaderGetReply(reader,&reply);
+    assert(ret == REDIS_ERR);
+    ret = redisReplyReaderGetReply(reader,&reply);
+    test_cond(ret == REDIS_OK && reply == NULL)
 }
 
-static void test_throughput() {
+static void test_throughput(void) {
     int i;
     long long t1, t2;
     redisContext *c = blocking_context;
@@ -359,7 +368,7 @@ static void test_throughput() {
     printf("\t(1000x LRANGE with 500 elements: %.2fs)\n", (t2-t1)/1000000.0);
 }
 
-static void cleanup() {
+static void cleanup(void) {
     redisContext *c = blocking_context;
     redisReply *reply;
 
