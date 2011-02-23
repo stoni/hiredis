@@ -30,6 +30,5 @@ install(TARGETS hiredis-test example-ae hiredis
             LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib/static)
 
-install(DIRECTORY . DESTINATION include FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY adapters DESTINATION include/adapters FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY ae DESTINATION include/ae FILES_MATCHING PATTERN "*.h")
