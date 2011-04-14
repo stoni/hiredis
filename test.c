@@ -62,6 +62,12 @@ static void test_format_commands(void) {
         len == 4+4+(3+2)+4+(3+2)+4+(0+2));
     free(cmd);
 
+    test("Format command with an empty string in between proper interpolations: ");
+    len = redisFormatCommand(&cmd,"SET %s %s","","foo");
+    test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$0\r\n\r\n$3\r\nfoo\r\n",len) == 0 &&
+        len == 4+4+(3+2)+4+(0+2)+4+(3+2));
+    free(cmd);
+
     test("Format command with %%b string interpolation: ");
     len = redisFormatCommand(&cmd,"SET %b %b","foo",3,"b\0r",3);
     test_cond(strncmp(cmd,"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nb\0r\r\n",len) == 0 &&
@@ -353,7 +359,7 @@ static void test_throughput(void) {
     t2 = usec();
     for (i = 0; i < 1000; i++) freeReplyObject(replies[i]);
     free(replies);
-    printf("\t(1000x PING: %.2fs)\n", (t2-t1)/1000000.0);
+    printf("\t(1000x PING: %.3fs)\n", (t2-t1)/1000000.0);
 
     replies = malloc(sizeof(redisReply*)*1000);
     t1 = usec();
@@ -365,7 +371,34 @@ static void test_throughput(void) {
     t2 = usec();
     for (i = 0; i < 1000; i++) freeReplyObject(replies[i]);
     free(replies);
-    printf("\t(1000x LRANGE with 500 elements: %.2fs)\n", (t2-t1)/1000000.0);
+    printf("\t(1000x LRANGE with 500 elements: %.3fs)\n", (t2-t1)/1000000.0);
+
+    replies = malloc(sizeof(redisReply*)*10000);
+    for (i = 0; i < 10000; i++)
+        redisAppendCommand(c,"PING");
+    t1 = usec();
+    for (i = 0; i < 10000; i++) {
+        assert(redisGetReply(c, (void*)&replies[i]) == REDIS_OK);
+        assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_STATUS);
+    }
+    t2 = usec();
+    for (i = 0; i < 10000; i++) freeReplyObject(replies[i]);
+    free(replies);
+    printf("\t(10000x PING (pipelined): %.3fs)\n", (t2-t1)/1000000.0);
+
+    replies = malloc(sizeof(redisReply*)*10000);
+    for (i = 0; i < 10000; i++)
+        redisAppendCommand(c,"LRANGE mylist 0 499");
+    t1 = usec();
+    for (i = 0; i < 10000; i++) {
+        assert(redisGetReply(c, (void*)&replies[i]) == REDIS_OK);
+        assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_ARRAY);
+        assert(replies[i] != NULL && replies[i]->elements == 500);
+    }
+    t2 = usec();
+    for (i = 0; i < 10000; i++) freeReplyObject(replies[i]);
+    free(replies);
+    printf("\t(10000x LRANGE with 500 elements: %.3fs)\n", (t2-t1)/1000000.0);
 }
 
 static void cleanup(void) {
