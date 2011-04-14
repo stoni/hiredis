@@ -9,8 +9,12 @@ if(WIN32)
 	set (SRC_LIST ${SRC_LIST} net_w32.c)
 	set (LIB_LIST Ws2_32.lib)
 else(WIN32)
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		add_definitions(-DHAVE_KQUEUE)
+	else(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		add_definitions(-DHAVE_EPOLL)
+	endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	set (SRC_LIST ${SRC_LIST} net.c)
-	add_definitions(-DHAVE_EPOLL)
 endif(WIN32)
 
 # add library
